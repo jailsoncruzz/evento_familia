@@ -92,28 +92,46 @@
             color: red;
             font-weight: bold;
         }
+
+        /* Botão flutuante */
+        .capture-fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            font-size: 18px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
     </style>
 </head>
 
 <body>
     <h1>Registre seus Momentos do Evento!</h1>
     <div id="camera-container">
-        <video id="camera" autoplay playsinline></video>
+        <video id="camera" autoplay playsinline class="hidden"></video>
         <p id="permission-message" class="hidden">Aguardando permissão para acessar a câmera...</p>
         <p id="error-message" class="error-message hidden"></p>
     </div>
-    <button id="toggle-camera-btn" class="hidden">Alternar Câmera</button>
-    <button id="capture-btn" class="hidden">Tirar Foto</button>
+    <button id="open-camera-btn">Abrir Câmera</button>
     <canvas id="canvas" class="hidden"></canvas>
 
     <!-- Área para exibir fotos capturadas -->
     <div id="photos-container" class="photo-container"></div>
 
+    <!-- Botão flutuante para tirar foto -->
+    <button id="capture-fab" class="capture-fab hidden">📸</button>
+
     <script>
         const video = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('capture-btn');
-        const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+        const openCameraBtn = document.getElementById('open-camera-btn');
+        const captureFab = document.getElementById('capture-fab');
         const permissionMessage = document.getElementById('permission-message');
         const errorMessage = document.getElementById('error-message');
         const photosContainer = document.getElementById('photos-container');
@@ -140,8 +158,7 @@
                 video.srcObject = stream;
 
                 permissionMessage.classList.add('hidden');
-                captureBtn.classList.remove('hidden');
-                toggleCameraBtn.classList.remove('hidden'); // Mostrar botão de alternância
+                video.classList.remove('hidden'); // Mostrar a câmera
             } catch (err) {
                 console.error('Erro ao acessar a câmera:', err);
                 permissionMessage.classList.add('hidden');
@@ -150,49 +167,29 @@
             }
         }
 
-        // Alternar entre câmera frontal e traseira
-        toggleCameraBtn.addEventListener('click', async () => {
-            if (!stream) return;
-
-            // Alterna entre 'environment' (traseira) e 'user' (frontal)
-            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-
-            try {
-                // Para a câmera atual
-                const tracks = stream.getTracks();
-                tracks.forEach(track => track.stop());
-
-                // Inicia a nova câmera
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: currentFacingMode }
-                });
-
-                video.srcObject = stream;
-            } catch (err) {
-                console.error('Erro ao alternar a câmera:', err);
-                alert('Erro ao alternar a câmera.');
-            }
+        // Abrir câmera em tela cheia
+        openCameraBtn.addEventListener('click', () => {
+            accessCamera();
+            video.classList.add('fullscreen');
+            openCameraBtn.classList.add('hidden'); // Esconder o botão "Abrir Câmera"
+            captureFab.classList.remove('hidden'); // Mostrar o botão flutuante
         });
 
-        // Capturar foto
-        captureBtn.addEventListener('click', () => {
-            // Colocar a câmera em tela cheia
-            video.classList.add('fullscreen');
+        // Capturar foto com o botão flutuante
+        captureFab.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Aguardar 1 segundo antes de capturar a foto
-            setTimeout(() => {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Remover tela cheia
+            video.classList.remove('fullscreen');
+            openCameraBtn.classList.remove('hidden'); // Mostrar o botão "Abrir Câmera"
+            captureFab.classList.add('hidden'); // Esconder o botão flutuante
 
-                // Remover tela cheia
-                video.classList.remove('fullscreen');
-
-                // Criar elemento para exibir a foto
-                const photoURL = canvas.toDataURL('image/jpeg');
-                addPhotoToGallery(photoURL);
-            }, 1000); // 1 segundo de atraso para facilitar a visualização
+            // Criar elemento para exibir a foto
+            const photoURL = canvas.toDataURL('image/jpeg');
+            addPhotoToGallery(photoURL);
         });
 
         // Adicionar foto à galeria
@@ -263,9 +260,6 @@
             link.download = 'foto.jpg';
             link.click();
         }
-
-        // Iniciar o acesso à câmera ao carregar a página
-        accessCamera();
     </script>
 </body>
 
