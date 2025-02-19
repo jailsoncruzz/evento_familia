@@ -3,26 +3,35 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Registro de Fotos do Evento</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             text-align: center;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f9;
+            background-color: #f9f5e7;
+            /* Fundo em tom pastel */
+            color: #333;
         }
 
         h1 {
+            font-family: 'Georgia', serif;
+            font-size: 2rem;
+            color: #d4af37;
+            /* Dourado */
             margin-top: 20px;
         }
 
         video {
             max-width: 100%;
-            max-height: 300px;
-            margin: 20px auto;
+            max-height: 100vh;
+            margin: 0 auto;
             display: block;
+            object-fit: cover;
+            border: 2px solid #d4af37;
+            /* Borda dourada */
             transition: all 0.3s ease;
         }
 
@@ -31,7 +40,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100vh;
             object-fit: cover;
             z-index: 1000;
         }
@@ -45,16 +54,26 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+            overflow-y: auto;
+            max-height: 60vh;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            /* Fundo semi-transparente */
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .photo-item {
             position: relative;
             margin: 10px;
-            border: 2px solid #ccc;
+            border: 2px solid #d4af37;
+            /* Borda dourada */
             border-radius: 10px;
             overflow: hidden;
             width: 150px;
             height: 150px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .photo-item img {
@@ -76,12 +95,35 @@
             padding: 5px 10px;
             font-size: 12px;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #d4af37;
+            /* Dourado */
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        .photo-actions button:hover {
+            background-color: #b8860b;
+            /* Dourado escuro */
         }
 
         button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            border: none;
+            border-radius: 20px;
+            background-color: #d4af37;
+            /* Dourado */
+            color: white;
+            font-family: 'Georgia', serif;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #b8860b;
+            /* Dourado escuro */
         }
 
         .hidden {
@@ -93,26 +135,60 @@
             font-weight: bold;
         }
 
-        /* Botão flutuante */
-        .capture-fab {
+        /* Botões flutuantes */
+        .fab {
             position: fixed;
             bottom: 20px;
-            right: 20px;
             padding: 15px 20px;
             font-size: 18px;
-            background-color: #007bff;
+            background-color: #d4af37;
+            /* Dourado */
             color: white;
             border: none;
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
             z-index: 1001;
+            transition: background-color 0.3s ease;
+        }
+
+        .fab:hover {
+            background-color: #b8860b;
+            /* Dourado escuro */
+        }
+
+        #capture-fab {
+            right: 20px;
+        }
+
+        #toggle-camera-fab {
+            left: 20px;
+        }
+
+        #close-camera-fab {
+            right: 80px;
+        }
+
+        /* Botão para enviar foto da galeria */
+        #upload-photo-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Botão para enviar todas as fotos */
+        #send-all-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
-    <h1>Registre seus Momentos do Evento!</h1>
+    <h1>Registro de Fotos do Evento</h1>
     <div id="camera-container">
         <video id="camera" autoplay playsinline class="hidden"></video>
         <p id="permission-message" class="hidden">Aguardando permissão para acessar a câmera...</p>
@@ -124,14 +200,28 @@
     <!-- Área para exibir fotos capturadas -->
     <div id="photos-container" class="photo-container"></div>
 
-    <!-- Botão flutuante para tirar foto -->
-    <button id="capture-fab" class="capture-fab hidden">📸</button>
+    <!-- Botões flutuantes -->
+    <button id="capture-fab" class="fab hidden">📸</button>
+    <button id="toggle-camera-fab" class="fab hidden">🔄</button>
+    <button id="close-camera-fab" class="fab hidden">❌</button>
+
+    <!-- Botão para enviar foto da galeria -->
+    <input type="file" id="file-input" accept="image/*" class="hidden">
+    <button id="upload-photo-btn">Galeria</button>
+
+    <!-- Botão para enviar todas as fotos -->
+    <button id="send-all-btn">Enviar Todas as Fotos</button>
 
     <script>
         const video = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
         const openCameraBtn = document.getElementById('open-camera-btn');
         const captureFab = document.getElementById('capture-fab');
+        const toggleCameraFab = document.getElementById('toggle-camera-fab');
+        const closeCameraFab = document.getElementById('close-camera-fab');
+        const fileInput = document.getElementById('file-input');
+        const uploadPhotoBtn = document.getElementById('upload-photo-btn');
+        const sendAllBtn = document.getElementById('send-all-btn');
         const permissionMessage = document.getElementById('permission-message');
         const errorMessage = document.getElementById('error-message');
         const photosContainer = document.getElementById('photos-container');
@@ -151,9 +241,15 @@
                 permissionMessage.classList.remove('hidden');
 
                 // Solicitar acesso à câmera com constraints específicos
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: currentFacingMode }
-                });
+                const constraints = {
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1920 }, // Resolução ideal (Full HD)
+                        height: { ideal: 1080 },
+                    },
+                };
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
 
                 video.srcObject = stream;
 
@@ -172,24 +268,75 @@
             accessCamera();
             video.classList.add('fullscreen');
             openCameraBtn.classList.add('hidden'); // Esconder o botão "Abrir Câmera"
-            captureFab.classList.remove('hidden'); // Mostrar o botão flutuante
+            captureFab.classList.remove('hidden'); // Mostrar o botão flutuante de captura
+            toggleCameraFab.classList.remove('hidden'); // Mostrar o botão flutuante de alternância
+            closeCameraFab.classList.remove('hidden'); // Mostrar o botão flutuante para fechar a câmera
         });
 
         // Capturar foto com o botão flutuante
         captureFab.addEventListener('click', () => {
-            const context = canvas.getContext('2d');
+            // Configurar o canvas para capturar a imagem na resolução original do vídeo
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+
+            const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Remover tela cheia
-            video.classList.remove('fullscreen');
-            openCameraBtn.classList.remove('hidden'); // Mostrar o botão "Abrir Câmera"
-            captureFab.classList.add('hidden'); // Esconder o botão flutuante
+            // Exportar a imagem com alta qualidade
+            const photoURL = canvas.toDataURL('image/jpeg', 1.0); // Qualidade máxima (1.0)
+
+            // Fechar a câmera
+            closeCamera();
 
             // Criar elemento para exibir a foto
-            const photoURL = canvas.toDataURL('image/jpeg');
             addPhotoToGallery(photoURL);
+        });
+
+        // Alternar entre câmera frontal e traseira
+        toggleCameraFab.addEventListener('click', async () => {
+            if (!stream) return;
+
+            // Alterna entre 'environment' (traseira) e 'user' (frontal)
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+            try {
+                // Para a câmera atual
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+
+                // Inicia a nova câmera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: currentFacingMode,
+                        width: { ideal: 1920 }, // Resolução ideal (Full HD)
+                        height: { ideal: 1080 },
+                    },
+                });
+
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Erro ao alternar a câmera:', err);
+                alert('Erro ao alternar a câmera.');
+            }
+        });
+
+        // Fechar a câmera
+        function closeCamera() {
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            video.classList.remove('fullscreen');
+            video.classList.add('hidden');
+            openCameraBtn.classList.remove('hidden'); // Mostrar o botão "Abrir Câmera"
+            captureFab.classList.add('hidden'); // Esconder o botão flutuante de captura
+            toggleCameraFab.classList.add('hidden'); // Esconder o botão flutuante de alternância
+            closeCameraFab.classList.add('hidden'); // Esconder o botão flutuante para fechar a câmera
+        }
+
+        // Botão flutuante para fechar a câmera
+        closeCameraFab.addEventListener('click', () => {
+            closeCamera();
         });
 
         // Adicionar foto à galeria
@@ -260,6 +407,55 @@
             link.download = 'foto.jpg';
             link.click();
         }
+
+        // Enviar foto da galeria do celular
+        uploadPhotoBtn.addEventListener('click', () => {
+            fileInput.click(); // Abre o seletor de arquivos
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const photoURL = e.target.result;
+                    addPhotoToGallery(photoURL); // Adiciona a foto à galeria
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Enviar todas as fotos para o servidor
+        sendAllBtn.addEventListener('click', () => {
+            const photoItems = document.querySelectorAll('.photo-item img');
+            if (photoItems.length === 0) {
+                alert('Nenhuma foto para enviar.');
+                return;
+            }
+
+            const promises = Array.from(photoItems).map((img) => {
+                const photoURL = img.src;
+                return fetch(photoURL)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const formData = new FormData();
+                        formData.append('photo', blob, 'foto.jpg');
+
+                        return fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    });
+            });
+
+            Promise.all(promises)
+                .then(() => {
+                    alert('Todas as fotos foram enviadas com sucesso!');
+                })
+                .catch(err => {
+                    alert('Erro ao enviar algumas fotos.');
+                });
+        });
     </script>
 </body>
 
