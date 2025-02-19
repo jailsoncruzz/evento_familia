@@ -18,12 +18,64 @@
             margin-top: 20px;
         }
 
-        video,
-        canvas {
+        video {
             max-width: 100%;
             max-height: 300px;
             margin: 20px auto;
             display: block;
+            transition: all 0.3s ease;
+        }
+
+        video.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1000;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .photo-container {
+            margin: 20px auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .photo-item {
+            position: relative;
+            margin: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            overflow: hidden;
+            width: 150px;
+            height: 150px;
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-actions {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .photo-actions button {
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
         }
 
         button {
@@ -53,16 +105,18 @@
     <button id="toggle-camera-btn" class="hidden">Alternar Câmera</button>
     <button id="capture-btn" class="hidden">Tirar Foto</button>
     <canvas id="canvas" class="hidden"></canvas>
-    <button id="upload-btn" class="hidden">Enviar Foto</button>
+
+    <!-- Área para exibir fotos capturadas -->
+    <div id="photos-container" class="photo-container"></div>
 
     <script>
         const video = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
         const captureBtn = document.getElementById('capture-btn');
-        const uploadBtn = document.getElementById('upload-btn');
         const toggleCameraBtn = document.getElementById('toggle-camera-btn');
         const permissionMessage = document.getElementById('permission-message');
         const errorMessage = document.getElementById('error-message');
+        const photosContainer = document.getElementById('photos-container');
 
         let currentFacingMode = 'environment'; // Inicia com a câmera traseira
         let stream;
@@ -122,35 +176,93 @@
 
         // Capturar foto
         captureBtn.addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            // Colocar a câmera em tela cheia
+            video.classList.add('fullscreen');
 
-            // Mostrar canvas e botão de upload
-            canvas.classList.remove('hidden');
-            uploadBtn.classList.remove('hidden');
+            // Aguardar 1 segundo antes de capturar a foto
+            setTimeout(() => {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Remover tela cheia
+                video.classList.remove('fullscreen');
+
+                // Criar elemento para exibir a foto
+                const photoURL = canvas.toDataURL('image/jpeg');
+                addPhotoToGallery(photoURL);
+            }, 1000); // 1 segundo de atraso para facilitar a visualização
         });
+
+        // Adicionar foto à galeria
+        function addPhotoToGallery(photoURL) {
+            const photoItem = document.createElement('div');
+            photoItem.classList.add('photo-item');
+
+            const img = document.createElement('img');
+            img.src = photoURL;
+
+            const actions = document.createElement('div');
+            actions.classList.add('photo-actions');
+
+            const sendButton = document.createElement('button');
+            sendButton.textContent = 'Enviar';
+            sendButton.addEventListener('click', () => {
+                sendPhoto(photoURL);
+            });
+
+            const downloadButton = document.createElement('button');
+            downloadButton.textContent = 'Baixar';
+            downloadButton.addEventListener('click', () => {
+                downloadPhoto(photoURL);
+            });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Excluir';
+            deleteButton.addEventListener('click', () => {
+                photosContainer.removeChild(photoItem);
+            });
+
+            actions.appendChild(sendButton);
+            actions.appendChild(downloadButton);
+            actions.appendChild(deleteButton);
+
+            photoItem.appendChild(img);
+            photoItem.appendChild(actions);
+
+            photosContainer.appendChild(photoItem);
+        }
 
         // Enviar foto para o servidor
-        uploadBtn.addEventListener('click', () => {
-            canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append('photo', blob, 'foto.jpg');
+        function sendPhoto(photoURL) {
+            fetch(photoURL)
+                .then(res => res.blob())
+                .then(blob => {
+                    const formData = new FormData();
+                    formData.append('photo', blob, 'foto.jpg');
 
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => response.text())
-                    .then(message => {
-                        alert(message);
-                    })
-                    .catch(err => {
-                        alert('Erro ao enviar a foto.');
+                    return fetch('/upload', {
+                        method: 'POST',
+                        body: formData
                     });
-            }, 'image/jpeg');
-        });
+                })
+                .then(response => response.text())
+                .then(message => {
+                    alert(message);
+                })
+                .catch(err => {
+                    alert('Erro ao enviar a foto.');
+                });
+        }
+
+        // Baixar foto
+        function downloadPhoto(photoURL) {
+            const link = document.createElement('a');
+            link.href = photoURL;
+            link.download = 'foto.jpg';
+            link.click();
+        }
 
         // Iniciar o acesso à câmera ao carregar a página
         accessCamera();
