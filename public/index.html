@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Fotos do Evento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        video,
+        canvas {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 20px auto;
+            display: block;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Registre seus Momentos do Evento!</h1>
+    <div id="camera-container">
+        <video id="camera" autoplay playsinline></video>
+        <p id="permission-message" class="hidden">Aguardando permissão para acessar a câmera...</p>
+        <p id="error-message" class="error-message hidden"></p>
+    </div>
+    <button id="toggle-camera-btn" class="hidden">Alternar Câmera</button>
+    <button id="capture-btn" class="hidden">Tirar Foto</button>
+    <canvas id="canvas" class="hidden"></canvas>
+    <button id="upload-btn" class="hidden">Enviar Foto</button>
+
+    <script>
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const toggleCameraBtn = document.getElementById('toggle-camera-btn');
+        const permissionMessage = document.getElementById('permission-message');
+        const errorMessage = document.getElementById('error-message');
+
+        let currentFacingMode = 'environment'; // Inicia com a câmera traseira
+        let stream;
+
+        // Função para acessar a câmera
+        async function accessCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('API de acesso à câmera não suportada neste navegador.');
+                alert('Seu navegador não suporta a API de acesso à câmera. Use um navegador moderno como Chrome ou Firefox.');
+                return;
+            }
+
+            try {
+                permissionMessage.classList.remove('hidden');
+
+                // Solicitar acesso à câmera com constraints específicos
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode }
+                });
+
+                video.srcObject = stream;
+
+                permissionMessage.classList.add('hidden');
+                captureBtn.classList.remove('hidden');
+                toggleCameraBtn.classList.remove('hidden'); // Mostrar botão de alternância
+            } catch (err) {
+                console.error('Erro ao acessar a câmera:', err);
+                permissionMessage.classList.add('hidden');
+                errorMessage.textContent = `Erro: ${err.message || 'Permissão negada.'}`;
+                errorMessage.classList.remove('hidden');
+            }
+        }
+
+        // Alternar entre câmera frontal e traseira
+        toggleCameraBtn.addEventListener('click', async () => {
+            if (!stream) return;
+
+            // Alterna entre 'environment' (traseira) e 'user' (frontal)
+            currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+
+            try {
+                // Para a câmera atual
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+
+                // Inicia a nova câmera
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode }
+                });
+
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Erro ao alternar a câmera:', err);
+                alert('Erro ao alternar a câmera.');
+            }
+        });
+
+        // Capturar foto
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Mostrar canvas e botão de upload
+            canvas.classList.remove('hidden');
+            uploadBtn.classList.remove('hidden');
+        });
+
+        // Enviar foto para o servidor
+        uploadBtn.addEventListener('click', () => {
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('photo', blob, 'foto.jpg');
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.text())
+                    .then(message => {
+                        alert(message);
+                    })
+                    .catch(err => {
+                        alert('Erro ao enviar a foto.');
+                    });
+            }, 'image/jpeg');
+        });
+
+        // Iniciar o acesso à câmera ao carregar a página
+        accessCamera();
+    </script>
+</body>
+
+</html>
